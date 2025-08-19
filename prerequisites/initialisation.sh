@@ -1,31 +1,52 @@
 #!/bin/sh
 
+redhat_pkg_manager(){
+    # As the RedHat familiy is quite diverse, figure out what package manager is used
+    if command -v dnf >/dev/null; then
+        echo "dnf"
+    elif command -v microdnf >/dev/null; then
+        echo "microdnf"
+    elif command -v yum >/dev/null; then
+        echo "yum"
+    else
+        echo "No supported Red Hat package manager found"
+        exit 1
+    fi
+}
+
 alpine() {
     # Install Docker and add current user to the Docker group
-    apk add --update docker openrc bash curl util-linux-login kubectl 1>/dev/null 
+    apk add -q --update docker openrc bash curl util-linux-login kubectl 1>/dev/null
     DOCKER_GID=`getent group docker | awk -F ':' '{print $3}'`
-    addgroup -g $DOCKER_GID `whoami`
+    addgroup -g $DOCKER_GID `whoami` 1>/dev/null
 
     # Get k3d
-    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash 1>/dev/null
+}
+
+redhat(){
+    # Determine installer
+    INSTALLER=$(redhat_pkg_manager)
+
+
 }
 
 ubuntu() {
     # Install Docker and add current user to the Docker group
-    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io curl apt-transport-https ca-certificates gnupg
-    usermod -aG docker `whoami`
+    apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io curl apt-transport-https ca-certificates gnupg 1>/dev/null
+    usermod -aG docker `whoami` 1>/dev/null
 
     # Install K3D
-    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash 1>/dev/null
 
     # Configure Apt repo for Kubectl
-    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' > /etc/apt/sources.list.d/kubernetes.list
     chmod 644 /etc/apt/sources.list.d/kubernetes.list
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
     # Install Kubectl
-    apt-get update && apt-get install -y kubectl
+    apt-get update -qq && apt-get install -qq -y kubectl
 }
 
 # Get OS
@@ -35,6 +56,8 @@ OS=`awk -F '=' '/^NAME=/ {print $NF}' /etc/os-release | sed -e 's/\"//g' | tr '[
 case "$OS" in
     alpine*)
         alpine;;
+    redhat*)
+        redhat;;
     ubuntu|debian)
         ubuntu;;
     *)
