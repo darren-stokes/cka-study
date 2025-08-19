@@ -1,5 +1,15 @@
 #!/bin/sh
 
+alpine() {
+    # Install Docker and add current user to the Docker group
+    apk add --update docker openrc bash curl util-linux-login kubectl 1>/dev/null 
+    DOCKER_GID=`getent group docker | awk -F ':' '{print $3}'`
+    addgroup -g $DOCKER_GID `whoami`
+
+    # Get k3d
+    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+}
+
 ubuntu() {
     # Install Docker and add current user to the Docker group
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io curl apt-transport-https ca-certificates gnupg
@@ -23,6 +33,8 @@ OS=`awk -F '=' '/^NAME=/ {print $NF}' /etc/os-release | sed -e 's/\"//g' | tr '[
 
 # Run the correct installation steps
 case "$OS" in
+    alpine*)
+        alpine;;
     ubuntu|debian)
         ubuntu;;
     *)
