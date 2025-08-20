@@ -1,11 +1,12 @@
 #!/bin/sh
 
 redhat_pkg_manager(){
-    # As the RedHat familiy is quite diverse, figure out what package manager is used
+    # As the RedHat family is quite diverse, figure out what package manager is used
     if command -v dnf >/dev/null; then
         echo "dnf"
     elif command -v microdnf >/dev/null; then
-        echo "microdnf"
+        microdnf install -y dnf
+        echo "dnf"
     elif command -v yum >/dev/null; then
         echo "yum"
     else
@@ -28,7 +29,8 @@ redhat(){
     # Determine installer
     INSTALLER=$(redhat_pkg_manager)
 
-
+    $INSTALLER -y install dnf-plugins-core
+    $INSTALLER -y config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
 }
 
 ubuntu() {
